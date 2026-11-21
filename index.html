@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数学之美 · 初中函数</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0b0e1a;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Segoe UI', 'Courier New', monospace;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+<canvas id="mathCanvas"></canvas>
+
+<script>
+    (function() {
+        const canvas = document.getElementById('mathCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const X_MIN = -6;
+        const X_MAX = 6;
+        const Y_MIN = -5;
+        const Y_MAX = 5;
+
+        let W = 0, H = 0;
+        let PLOT_W = 0, PLOT_H = 0;
+        let PADDING_X = 0, PADDING_Y = 0;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            W = canvas.width;
+            H = canvas.height;
+
+            PADDING_X = Math.max(70, W * 0.1);
+            PADDING_Y = Math.max(60, H * 0.1);
+            PLOT_W = W - 2 * PADDING_X;
+            PLOT_H = H - 2 * PADDING_Y;
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+        });
+
+        function toCanvasX(x) {
+            return PADDING_X + ((x - X_MIN) / (X_MAX - X_MIN)) * PLOT_W;
+        }
+        function toCanvasY(y) {
+            return PADDING_Y + PLOT_H - ((y - Y_MIN) / (Y_MAX - Y_MIN)) * PLOT_H;
+        }
+
+        function drawGridAndAxes() {
+            ctx.clearRect(0, 0, W, H);
+
+            const bgGrad = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.2, W/2, H/2, Math.max(W,H)*0.7);
+            bgGrad.addColorStop(0, '#0f1420');
+            bgGrad.addColorStop(1, '#0a0e16');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, W, H);
+
+            ctx.lineWidth = 0.5;
+            ctx.strokeStyle = '#1f2a3a';
+            for (let x = Math.ceil(X_MIN); x <= X_MAX; x++) {
+                if (x === 0) continue;
+                const cx = toCanvasX(x);
+                ctx.beginPath();
+                ctx.moveTo(cx, PADDING_Y);
+                ctx.lineTo(cx, H - PADDING_Y);
+                ctx.stroke();
+            }
+            for (let y = Math.ceil(Y_MIN); y <= Y_MAX; y++) {
+                if (y === 0) continue;
+                const cy = toCanvasY(y);
+                ctx.beginPath();
+                ctx.moveTo(PADDING_X, cy);
+                ctx.lineTo(W - PADDING_X, cy);
+                ctx.stroke();
+            }
+
+            ctx.lineWidth = 1.8;
+            ctx.strokeStyle = '#a0b8d9';
+            ctx.shadowColor = '#3f5f8f';
+            ctx.shadowBlur = 8;
+
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(X_MIN), toCanvasY(0));
+            ctx.lineTo(toCanvasX(X_MAX), toCanvasY(0));
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(0), toCanvasY(Y_MIN));
+            ctx.lineTo(toCanvasX(0), toCanvasY(Y_MAX));
+            ctx.stroke();
+
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = '#c0d0f0';
+            const arrowSize = Math.max(8, W * 0.008);
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(X_MAX) + arrowSize, toCanvasY(0));
+            ctx.lineTo(toCanvasX(X_MAX) - arrowSize*1.5, toCanvasY(0) - arrowSize*0.8);
+            ctx.lineTo(toCanvasX(X_MAX) - arrowSize*1.5, toCanvasY(0) + arrowSize*0.8);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(0), toCanvasY(Y_MAX) - arrowSize);
+            ctx.lineTo(toCanvasX(0) - arrowSize*0.8, toCanvasY(Y_MAX) + arrowSize*1.5);
+            ctx.lineTo(toCanvasX(0) + arrowSize*0.8, toCanvasY(Y_MAX) + arrowSize*1.5);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            const fontSize = Math.max(14, W * 0.014);
+            ctx.font = `bold ${fontSize}px "Segoe UI", "Courier New", monospace`;
+            ctx.fillStyle = '#b8d0f0';
+            ctx.fillText('x', toCanvasX(X_MAX) - fontSize*1.5, toCanvasY(0) - fontSize*1.2);
+            ctx.fillText('y', toCanvasX(0) + fontSize*1.2, toCanvasY(Y_MAX) + fontSize*1.2);
+            ctx.font = `${fontSize*0.85}px "Segoe UI", monospace`;
+            ctx.fillStyle = '#8a9fc0';
+            ctx.fillText('O', toCanvasX(0) + fontSize*0.8, toCanvasY(0) + fontSize*1.5);
+
+            ctx.font = `${fontSize*0.75}px "Segoe UI", monospace`;
+            ctx.fillStyle = '#6a7f9f';
+            for (let x = -6; x <= 6; x++) {
+                if (x === 0) continue;
+                if (x % 2 === 0 || x === -6 || x === 6) {
+                    ctx.fillText(x.toString(), toCanvasX(x) - fontSize*0.5, toCanvasY(0) + fontSize*1.6);
+                }
+            }
+            for (let y = -4; y <= 4; y++) {
+                if (y === 0) continue;
+                ctx.fillText(y.toString(), toCanvasX(0) + fontSize*0.8, toCanvasY(y) + fontSize*0.4);
+            }
+        }
+
+        // ========== 场景定义 (保留 4 个基础核心函数) ==========
+        const SCENARIOS = [
+            {
+                title: '正比例函数 y = kx',
+                condition: '(k ≠ 0)',
+                lines: [
+                    { k: 0.5, b: 0, color: '#5DC9FF', label: 'y = 0.5x' },
+                    { k: 1.5, b: 0, color: '#C97BFF', label: 'y = 1.5x' },
+                    { k: -1,  b: 0, color: '#FFA07A', label: 'y = -x' }
+                ],
+                labelPos: { x: -4.2, y: 3.8 }
+            },
+            {
+                title: '一次函数 y = kx + b',
+                condition: '(k ≠ 0)',
+                lines: [
+                    { k: 1, b: -2, color: '#FF7B9C', label: 'y = x - 2' },
+                    { k: 1, b: 0,  color: '#FFB347', label: 'y = x' },
+                    { k: 1, b: 2,  color: '#66DE7A', label: 'y = x + 2' }
+                ],
+                labelPos: { x: 3.8, y: 4.2 } 
+            },
+            {
+                title: '反比例函数 y = k / x',
+                condition: '(k ≠ 0, x ≠ 0)',
+                lines: [
+                    { k: 2,  b: 0, color: '#FF7B9C', label: 'y = 2 / x' },
+                    { k: 4,  b: 0, color: '#FFB347', label: 'y = 4 / x' },
+                    { k: -2, b: 0, color: '#66DE7A', label: 'y = -2 / x' }
+                ],
+                labelPos: { x: 4.2, y: 2.5 }
+            },
+            {
+                title: '二次函数 y = ax²',
+                condition: '(a ≠ 0)',
+                lines: [
+                    { k: 0.5,  b: 0, color: '#FF7B9C', label: 'y = 0.5x²' },
+                    { k: 1.0,  b: 0, color: '#FFB347', label: 'y = x²' },
+                    { k: -0.5, b: 0, color: '#5DC9FF', label: 'y = -0.5x²' }
+                ],
+                labelPos: { x: -4.2, y: -3.2 }
+            }
+        ];
+
+        const LINE_DRAW_DURATION = 2200;
+        const LINE_HOLD_DURATION = 1800;
+        const GAP_DURATION = 600;
+
+        let currentScenarioIndex = 0;
+        let currentLineIndex = 0;
+        let phase = 'drawing';
+        let phaseStartTime = 0;
+        let lastTimestamp = 0;
+        let animationFrameId = null;
+        let isFinished = false;
+
+        function resetAll() {
+            currentScenarioIndex = 0;
+            currentLineIndex = 0;
+            phase = 'drawing';
+            phaseStartTime = performance.now();
+            isFinished = false;
+        }
+
+        function drawSingleLine(scenario, line, progress) {
+            const k = line.k;
+            const b = line.b;
+            const color = line.color;
+            const SAMPLES = 800;
+            const pointCount = Math.floor(SAMPLES * progress);
+            if (pointCount < 2) return;
+
+            ctx.beginPath();
+            let started = false;
+
+            let fn;
+            if (scenario.title.includes('正比例') || scenario.title.includes('一次函数')) {
+                fn = (x) => k * x + b;
+            } else if (scenario.title.includes('反比例')) {
+                fn = (x) => (Math.abs(x) < 0.02) ? NaN : k / x;
+            } else if (scenario.title.includes('二次函数')) {
+                fn = (x) => k * x * x;
+            } else {
+                fn = (x) => x;
+            }
+
+            for (let i = 0; i < pointCount; i++) {
+                const x = X_MIN + (X_MAX - X_MIN) * (i / (SAMPLES - 1));
+                
+                if (Math.abs(x) < 0.02) {
+                    started = false;
+                    continue;
+                }
+
+                const y = fn(x);
+                if (isNaN(y) || !isFinite(y)) {
+                    started = false;
+                    continue;
+                }
+                const cx = toCanvasX(x);
+                const cy = toCanvasY(y);
+                if (!started) {
+                    ctx.moveTo(cx, cy);
+                    started = true;
+                } else {
+                    ctx.lineTo(cx, cy);
+                }
+            }
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = Math.max(3.0, W * 0.003);
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 18;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        function drawDynamicLabel(scenario, line, progress) {
+            const pos = scenario.labelPos;
+            const cx = toCanvasX(pos.x);
+            const cy = toCanvasY(pos.y);
+
+            const titleSize = Math.max(16, W * 0.016);
+            const formulaSize = Math.max(18, W * 0.018);
+            const conditionSize = Math.max(12, W * 0.012);
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.font = `bold ${titleSize}px "Courier New", monospace`;
+            ctx.fillStyle = '#EEF6FF';
+            ctx.shadowColor = '#6f9ef0';
+            ctx.shadowBlur = 10;
+            ctx.fillText(scenario.title, cx, cy - titleSize * 1.2);
+
+            ctx.font = `${conditionSize}px "Courier New", monospace`;
+            ctx.fillStyle = '#8a9fc0';
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.fillText(scenario.condition, cx, cy);
+
+            ctx.font = `bold ${formulaSize}px "Courier New", monospace`;
+            ctx.fillStyle = '#AAC6FF';
+            ctx.shadowColor = '#445588';
+            ctx.shadowBlur = 10;
+            ctx.fillText(line.label, cx, cy + formulaSize * 1.2);
+        }
+
+        function animate(timestamp) {
+            if (!timestamp) timestamp = performance.now();
+            if (!lastTimestamp) {
+                lastTimestamp = timestamp;
+                phaseStartTime = timestamp;
+            }
+
+            const elapsed = timestamp - phaseStartTime;
+            const scenario = SCENARIOS[currentScenarioIndex];
+
+            drawGridAndAxes();
+
+            if (!isFinished) {
+                if (phase === 'drawing') {
+                    let progress = Math.min(elapsed / LINE_DRAW_DURATION, 1.0);
+                    const line = scenario.lines[currentLineIndex];
+                    
+                    drawSingleLine(scenario, line, progress);
+                    drawDynamicLabel(scenario, line, progress);
+
+                    if (progress >= 1.0) {
+                        phase = 'hold';
+                        phaseStartTime = timestamp;
+                    }
+                } else if (phase === 'hold') {
+                    const line = scenario.lines[currentLineIndex];
+                    drawSingleLine(scenario, line, 1.0);
+                    drawDynamicLabel(scenario, line, 1.0);
+
+                    if (elapsed >= LINE_HOLD_DURATION) {
+                        phase = 'gap';
+                        phaseStartTime = timestamp;
+                    }
+                } else if (phase === 'gap') {
+                    if (elapsed >= GAP_DURATION) {
+                        currentLineIndex++;
+                        if (currentLineIndex >= scenario.lines.length) {
+                            currentScenarioIndex++;
+                            currentLineIndex = 0;
+                            
+                            if (currentScenarioIndex >= SCENARIOS.length) {
+                                isFinished = true;
+                                currentScenarioIndex = SCENARIOS.length - 1;
+                                currentLineIndex = SCENARIOS[currentScenarioIndex].lines.length - 1;
+                                phase = 'finished';
+                            } else {
+                                phase = 'drawing';
+                                phaseStartTime = timestamp;
+                            }
+                        } else {
+                            phase = 'drawing';
+                            phaseStartTime = timestamp;
+                        }
+                    }
+                }
+            } else {
+                const lastScenario = SCENARIOS[SCENARIOS.length - 1];
+                const lastLine = lastScenario.lines[lastScenario.lines.length - 1];
+                drawSingleLine(lastScenario, lastLine, 1.0);
+                drawDynamicLabel(lastScenario, lastLine, 1.0);
+            }
+
+            ctx.shadowBlur = 0;
+
+            lastTimestamp = timestamp;
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function startAnimation() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            resetAll();
+            lastTimestamp = 0;
+            phaseStartTime = performance.now();
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        startAnimation();
+
+    })();
+</script>
+</body>
+</html>
